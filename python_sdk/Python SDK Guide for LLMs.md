@@ -342,3 +342,94 @@ async def run(self):
     finally:
         logger.info("Server shutting down")
 ```
+
+# Full server example
+
+```python
+from mcp.server.fastmcp import FastMCP
+from mcp.types import Context, Message, UserMessage, AssistantMessage
+import httpx
+import logging
+from typing import Any, Optional, Dict, List
+from datetime import datetime
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("mcp-server")
+
+# Initialize server
+mcp = FastMCP("Example MCP Server", dependencies=["httpx", "pandas", "numpy"])
+
+# Cache implementation
+class Cache:
+    def __init__(self, max_size: int = 100):
+        self._cache: Dict[str, Any] = {}
+        self.max_size = max_size
+    
+    def get(self, key: str) -> Optional[Any]:
+        return self._cache.get(key)
+    
+    def set(self, key: str, value: Any) -> None:
+        if len(self._cache) >= self.max_size:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[key] = value
+
+cache = Cache()
+
+# Resources
+@mcp.resource("config://app")
+def get_config() -> dict:
+    """Application configuration"""
+    return {
+        "version": "1.0.0",
+        "env": "development",
+        "features": ["analytics", "auth"]
+    }
+
+@mcp.resource("users://{user_id}/profile")
+def get_user_profile(user_id: str) -> dict:
+    """Get user profile data"""
+    cached = cache.get(f"user:{user_id}")
+    if cached:
+        return cached
+    profile = {
+        "id": user_id,
+        "created_at": datetime.now().isoformat()
+    }
+    cache.set(f"user:{user_id}", profile)
+    return profile
+
+# Tools
+@mcp.tool()
+async def fetch_data(url: str, ctx: Context) -> str:
+    """Fetch data from external URL"""
+    logger.info(f"Fetching data from {url}")
+    ctx.info(f"Starting request to {url}")
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        ctx.info("Request complete")
+        return response.text
+
+@mcp.tool()
+def process_data(data: List[float]) -> dict:
+    """Process numerical data"""
+    return {
+        "sum": sum(data),
+        "len": len(data),
+        "mean": sum(data) / len(data) if data else 0
+    }
+
+# Prompts
+@mcp.prompt()
+def analyze_data(data: str) -> List[Message]:
+    """Analyze provided data"""
+    return [
+        UserMessage("Please analyze this data:"),
+        UserMessage(data),
+        AssistantMessage("I'll help analyze that. What specific aspects interest you?")
+    ]
+
+if __name__ == "__main__":
+    mcp.run()
+```
