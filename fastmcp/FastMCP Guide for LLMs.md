@@ -240,3 +240,43 @@ This guide covers the core concepts and patterns found in the FastMCP Python SDK
 You have to start the inspector like this or else python won't have the venv dependencies.
 
 (venv) 😜 npx @modelcontextprotocol/inspector ./venv/bin/python -m upsun_ai_server.py
+
+# Dynamic Tool Registration with FastMCP
+
+When registering tools with FastMCP, proper handling of parameter types and defaults is crucial. Here's how to handle different parameter types:
+
+## Basic Parameters
+
+```python
+# String parameter with default
+environment: str = Field(default='.')
+
+# Required string parameter 
+project: str = ...
+
+## Array Parameters
+
+Array parameters require special handling to maintain their proper structure:
+
+# Array with default value
+command: list = Field(default=['status'])
+
+# Wrong - will cause syntax error
+command: list = Field(default='["status"]')
+
+## Implementation Example
+
+def register_tool(tool):
+    fields = tool.inputSchema.get("properties", {})
+    required_fields = set(tool.inputSchema.get("required", []))
+    
+    params = []
+    for key, field in fields.items():
+        type_str = TYPE_MAPPING.get(field.get("type"), "Any").__name__
+        
+        if field.get("type") == "array":
+            default = f"Field(default={field.get('default')})" if not key in required_fields else "..."
+        else:
+            default = "..." if key in required_fields else f"Field(default='{field.get('default', '')}')"
+            
+        params.append(f"{key}: {type_str} = {default}")
