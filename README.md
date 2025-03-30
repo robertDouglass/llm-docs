@@ -1,6 +1,6 @@
-# Model Context Protocol Documentation for LLMs
+# Documentation for LLMs
 
-This repository contains documentation and examples of the Model Context Protocol (MCP) specifically formatted for Large Language Models (LLMs). The content is structured to be easily ingested and understood by LLMs when they are prompted to assist with MCP-related development tasks.
+This repository contains documentation and examples of the Model Context Protocol (MCP) and other technologies specifically formatted for Large Language Models (LLMs). The content is structured to be easily ingested and understood by LLMs when they are prompted to assist with MCP-related development tasks.
 
 ## Repository Structure
 
